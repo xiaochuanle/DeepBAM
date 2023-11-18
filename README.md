@@ -4,11 +4,12 @@ DeepBam is a model training and inferencing structure especially designed for Ox
 
 ## Build from scrath
 ### build C++ program
+To build this program, you should set up cuda tookit 11.8, and download libtorch. The C++ program is build under Ubuntu 22.04 with g++-11.2, it may raise some problems when build from other systems, if you have these problems don't hesitate to raise a issue.
 ```
 git clone https://github.com/huicongyao/Deep-Bam.git
 cd Deep-Bam/cpp
-mkdir build
-cmake ..
+mkdir build && cd build
+cmake -DCMAKE_PREFIX_PATH=<LIBTORCH_ROOT> .. 
 make -j
 ```
 

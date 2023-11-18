@@ -222,7 +222,7 @@ void Yao::get_hc_features(Yao::Pod5Data p5,
 //    spdlog::info("Thread-{} start to extract features for {}, found {} reads",
 //                 thread_str, p5.get_filename(), inputs.size());
     int32_t stride = (inputs.size() + 4) / 4;
-    std::atomic<int64_t> total_cnt;
+    std::atomic<int64_t> total_cnt(0);
     std::mutex mtx;
     std::condition_variable cv;
     std::vector<std::thread> workers;
