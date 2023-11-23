@@ -7,9 +7,7 @@
 #include <thread>
 #include <future>
 #include <cstring>
-#include <boost/iostreams/categories.hpp>
-#include <boost/iostreams/device/file_descriptor.hpp>
-#include <boost/iostreams/stream.hpp>
+#include <unordered_map>
 #include <spdlog/spdlog.h>
 #include <set>
 #include "../DataLoader/Reference_Reader.h"
@@ -19,7 +17,10 @@
 
 void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
                                     std::vector<Yao::SamRead *> inputs,
-                                    fs::path & writefile,
+                                    std::map<std::string, std::string> & reformat_chr,
+//                                    fs::path & writefile,
+                                    std::vector<uint8_t> & total_site_info_lists,
+                                    std::vector<float> & total_feature_lists,
                                     std::set<std::string> &pos_hc_sites,
                                     std::set<std::string> &neg_hc_sites,
                                     std::mutex &mtx,
@@ -36,8 +37,8 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
     thread_cnt ++;
 
     using namespace torch::indexing;
+    std::vector<uint8_t> site_info_lists;
     std::vector<float> feature_lists;
-    std::vector<int32_t> site_info_lists;
     const auto base2code_dna = Yao::get_base2code_dna();
     int cnt = 0;
     for (auto & sam_ptr : inputs){
@@ -70,7 +71,8 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
             query_seq = Yao::get_complement_seq(query_seq, "DNA");
             read_start = query_seq.length() - sam_ptr->query_alignment_end;
         }
-        int32_t strand_code = (int32_t)sam_ptr->is_forward;
+        std::string strand_code = sam_ptr->is_forward ? "+" : "-";
+//        int32_t strand_code = (int32_t)sam_ptr->is_forward;
 
         std::vector<int32_t> r_to_q_poss;
         Yao::parse_cigar(sam_ptr->cigar_pair,
@@ -113,7 +115,7 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
                     kmer_v[i] = base2code_dna.at(k_mer[i]);
                 }
                 at::Tensor kmer_t = torch::from_blob(kmer_v.data(), kmer_v.size(), torch::kInt64);
-//                kmer_t += 4 * strand_code;
+                // kmer_t += 4 * strand_code;
                 std::vector<at::Tensor> k_signals(kmer_size);
                 for (int32_t pos = off_loc - num_bases; pos < off_loc + num_bases + 1; pos++) {
                     k_signals[pos - off_loc + num_bases] = ref_signal_grp[pos];
@@ -129,14 +131,6 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
                 at::Tensor signal_lens_t = torch::from_blob(signal_lens.data(),
                                                             signal_lens.size(),
                                                             torch::kFloat32);
-                // doing median absolute difference for signal_len
-                // todo: may try to drop this in the furture
-//                auto center = torch::median(signal_lens_t);
-//                float c = 0.674489;
-//                auto mad = torch::median(torch::abs(signal_lens_t - center)) / c;
-//                if (mad.item<float>() != 0.0)
-//                    signal_lens_t = (signal_lens_t - torch::median(signal_lens_t)) / mad;
-//                signal_lens_t = signal_lens_t.to(torch::kFloat32);
 
                 at::Tensor signal_means_t = torch::from_blob(signal_means.data(),
                                                              signal_means.size(),
@@ -159,11 +153,18 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
                 feature = feature.contiguous();
                 std::vector<float> feature_v(feature.data_ptr<float>(),
                                              feature.data_ptr<float>() + feature.numel());
-                if (pos_hc_sites.find(site_key) != pos_hc_sites.end())
-                    feature_v.push_back(1.0);
-                else
-                    feature_v.push_back(0.0);
+                std::string site_info = sam_ptr->query_name + "\t" + \
+                    Yao::get_num_to_str(sam_ptr->reference_start) + "\t" +  \
+                    Yao::get_num_to_str(sam_ptr->reference_end) + "\t" + \
+                    reformat_chr.at(sam_ptr->reference_name) + \
+                    "\t" + Yao::get_num_to_str(abs_loc) + "\t" + strand_code;
+                site_info_lists.insert(site_info_lists.end(), site_info.begin(), site_info.end());
 
+                if (pos_hc_sites.find(site_key) != pos_hc_sites.end()) {
+                    feature_v.push_back(1.0);
+                }else {
+                    feature_v.push_back(0.0);
+                }
                 cnt += 1;
                 feature_lists.insert(feature_lists.end(),
                                      feature_v.begin(),
@@ -180,30 +181,37 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
         }
     }
     inputs.clear();
-    size_t len = kmer_size * 20 + 1;
     {
         std::unique_lock<std::mutex> lock(mtx);
-        if (fs::exists(writefile)) {
-            cnpy::npy_save(writefile.string(),
-                           &feature_lists[0],
-                           {feature_lists.size() / len, len},
-                           "a");
-        }
-        else {
-            cnpy::npy_save(writefile.string(),
-                           &feature_lists[0],
-                           {feature_lists.size() / len, len},
-                           "w");
-        }
+        total_site_info_lists.insert(total_site_info_lists.end(),
+                                     site_info_lists.begin(),
+                                     site_info_lists.end());
+        total_feature_lists.insert(total_feature_lists.end(),
+                                   feature_lists.begin(),
+                                   feature_lists.end());
+//        if (fs::exists(writefile)) {
+//            cnpy::npy_save(writefile.string(),
+//                           &feature_lists[0],
+//                           {feature_lists.size() / len, len},
+//                           "a");
+//        }
+//        else {
+//            cnpy::npy_save(writefile.string(),
+//                           &feature_lists[0],
+//                           {feature_lists.size() / len, len},
+//                           "w");
+//        }
+
     }
     cv.notify_all();
-
+    size_t len = kmer_size * 20 + 1;
     total_cnt += feature_lists.size() / len;
     thread_cnt--;
 }
 
 void Yao::get_hc_features(Yao::Pod5Data p5,
                        std::vector<Yao::SamRead*> inputs,
+                       std::map<std::string, std::string> & reformat_chr,
                        fs::path writefile,
                        std::set<std::string> & pos_hc_sites,
                        std::set<std::string> & neg_hc_sites,
@@ -221,6 +229,8 @@ void Yao::get_hc_features(Yao::Pod5Data p5,
 //    std::string thread_str = sstream.str();
 //    spdlog::info("Thread-{} start to extract features for {}, found {} reads",
 //                 thread_str, p5.get_filename(), inputs.size());
+    std::vector<uint8_t> total_site_info_lists;
+    std::vector<float> total_feature_lists;
     int32_t stride = (inputs.size() + 4) / 4;
     std::atomic<int64_t> total_cnt(0);
     std::mutex mtx;
@@ -233,7 +243,9 @@ void Yao::get_hc_features(Yao::Pod5Data p5,
         workers.emplace_back(Yao::get_hc_features_subthread,
                 std::ref(p5),
                 input_s,
-                std::ref(writefile),
+                std::ref(reformat_chr),
+                std::ref(total_site_info_lists),
+                std::ref(total_feature_lists),
                 std::ref(pos_hc_sites),
                 std::ref(neg_hc_sites),
                 std::ref(mtx),
@@ -253,10 +265,20 @@ void Yao::get_hc_features(Yao::Pod5Data p5,
             worker.join();
         }
     }
-
     inputs.clear();
-
     p5.release();
+    size_t feature_len = kmer_size * 20 + 1;
+    size_t sample_len = total_feature_lists.size() / feature_len;
+    cnpy::npz_save(writefile,
+                   "site_infos",
+                   &total_site_info_lists[0],
+                   {sample_len, total_site_info_lists.size() / sample_len},
+                   "w");
+    cnpy::npz_save(writefile,
+                   "features",
+                   &total_feature_lists[0],
+                   {sample_len, feature_len},
+                   "a");
     auto ed = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(ed - st);
     spdlog::info("Extract features for {} finished, extracted {} features, cost {} seconds",
@@ -360,7 +382,7 @@ void Yao::get_feature_for_model_subthread(Yao::Pod5Data &p5,
                     kmer_v[i] = base2code_dna.at(k_mer[i]);
                 }
                 at::Tensor kmer_t = torch::from_blob(kmer_v.data(), kmer_v.size(), torch::kInt64);
-//                if (sam_ptr->is_forward) kmer_t += 4;
+                // if (sam_ptr->is_forward) kmer_t += 4;
                 std::vector<at::Tensor> k_signals(kmer_size);
                 for (int32_t pos = off_loc - num_bases; pos < off_loc + num_bases + 1; pos++) {
                     k_signals[pos - off_loc + num_bases] = ref_signal_grp[pos];
@@ -555,7 +577,7 @@ void Yao::get_feature_for_model_with_thread_pool(int32_t num_workers,
         const size_t buffer_size = 1024 * 1024 * 50;
         char * buffer = new char [buffer_size];
         std::string sam_str;
-        std::string cmd = "samtools view -@ 6 " + bam_path.string();
+        std::string cmd = "samtools view -@ 12 " + bam_path.string();
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
 
         if (!pipe)

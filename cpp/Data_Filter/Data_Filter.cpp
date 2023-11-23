@@ -279,9 +279,6 @@ void Data_Filter_get_features_for_model_subthread(Yao::Pod5Data &p5,
                     {
                         std::unique_lock<std::mutex> lock(mtx1);
                         kmer_batch = kmer_batch.to(torch::kLong);
-                        if (dataQueue.size() > 1024) {
-                            std::this_thread::sleep_for(std::chrono::seconds(10));
-                        }
                         dataQueue.push({site_key_batch,
                                         site_info_batch,
                                         kmer_batch.clone(),
@@ -520,6 +517,7 @@ void Data_Filter_get_features_for_model_threadpool(int32_t num_workers,
         delete [] buffer;
         // wait for thread pool to finish, feature extraction and deconstruct
         // thread pool deconstruction will join all threads to work
+
     }
     // push fake feature as ending
     {
@@ -555,6 +553,11 @@ void Data_Filter_Model_Inference(torch::jit::Module &module,
         cv1.notify_all();
         if (kmer.size(0) == 0) {
             break;
+        }
+        {
+//            std::cout << kmer.sizes() << std::endl;
+//            std::cout << signal.sizes() << std::endl;
+//            break;
         }
         kmer = kmer.to(torch::kLong);
         signal = signal.to(torch::kFloat32);
@@ -596,6 +599,7 @@ void Data_Filter_Model_Inference(torch::jit::Module &module,
                 std::this_thread::sleep_for(std::chrono::seconds(10));
             }
             data_queue.push({filtered_kmer, filtered_signal, filtered_label});
+
         }
         cv2.notify_one();
         cnt += 1;
@@ -606,11 +610,11 @@ void Data_Filter_Model_Inference(torch::jit::Module &module,
     data_queue.push({std::vector<at::Tensor>(), std::vector<at::Tensor>(), filtered_label});
     lock2.unlock();
     cv2.notify_one();
-//    auto thread_id = std::this_thread::get_id(); // convert thread id to string
-//    std::stringstream sstream;
-//    sstream << thread_id;
-//    std::string thread_str = sstream.str();
-    spdlog::info("Model inference thread finished, processed {} batch", cnt);
+    auto thread_id = std::this_thread::get_id(); // convert thread id to string
+    std::stringstream sstream;
+    sstream << thread_id;
+    std::string thread_str = sstream.str();
+    spdlog::info("Model inference thread-{} finished, processed {} batch", thread_str, cnt);
 }
 
 void Data_Filter_write_data(fs::path &write_dir,

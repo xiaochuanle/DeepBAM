@@ -7,7 +7,9 @@
 
 #pragma once
 #include <mutex>
+#include <unordered_map>
 #include <map>
+
 #include <set>
 #include <condition_variable>
 #include "../DataLoader/Pod5Data.h"
@@ -22,7 +24,10 @@ namespace Yao{
 // make use of multi CPU and reduce memory cost
 void get_hc_features_subthread(Yao::Pod5Data &p5,
                                std::vector<Yao::SamRead*> inputs,
-                               fs::path & writefile,
+                               std::map<std::string, std::string> & reformat_chr,
+//                               fs::path & writefile,
+                               std::vector<uint8_t> & total_site_info_lists,
+                               std::vector<float> & total_feature_lists,
                                std::set<std::string> & pos_hc_sites,
                                std::set<std::string> & neg_hc_sites,
                                std::mutex &mtx,
@@ -38,6 +43,7 @@ void get_hc_features_subthread(Yao::Pod5Data &p5,
 
 void get_hc_features(Yao::Pod5Data p5,
                        std::vector<Yao::SamRead*> inputs,
+                       std::map<std::string, std::string> & reformat_chr,
                        fs::path writefile,
                        std::set<std::string> & pos_hc_sites,
                        std::set<std::string> & neg_hc_sites,

@@ -55,6 +55,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
 
         int32_t file_cnt = 0;
         std::vector<Yao::SamRead *> inputs;
+        auto reformat_chr = ref.reformat_chr();
         while (fgets(buffer, buffer_size, pipe.get()) != nullptr) {
             sam_str = buffer;
             Yao::SamRead *sam_ptr = new Yao::SamRead(sam_str);
@@ -64,7 +65,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                 try{
                     p5_file = filename_to_path.at(file_name_hold);
                     fs::path write_file = write_dir / p5_file.filename();
-                    write_file.replace_extension(".npy");
+                    write_file.replace_extension(".npz");
                     Yao::Pod5Data p5(p5_file);
                     while (thread_cnt >= (int64_t)(num_workers * 4)) {
                         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -73,6 +74,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                     pool.enqueue(Yao::get_hc_features,
                                  p5,
                                  inputs,
+                                 std::ref(reformat_chr),
                                  write_file,
                                  std::ref(pos_hc_sites),
                                  std::ref(neg_hc_sites),
@@ -122,7 +124,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
             try{
                 p5_file = filename_to_path.at(file_name_hold);
                 fs::path write_file = write_dir / p5_file.filename();
-                write_file.replace_extension(".npy");
+                write_file.replace_extension(".npz");
                 Yao::Pod5Data p5(p5_file);
 //                while (pool.get_task_size() > 0) {
 //                    std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -130,6 +132,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                 pool.enqueue(Yao::get_hc_features,
                              p5,
                              inputs,
+                             std::ref(reformat_chr),
                              write_file,
                              std::ref(pos_hc_sites),
                              std::ref(neg_hc_sites),
