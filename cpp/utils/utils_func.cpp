@@ -412,6 +412,14 @@ std::vector<std::string> Yao::generate_keys(at::Tensor &site_info) {
     return keys;
 }
 
+std::string Yao::get_num_to_str(int32_t i)  {
+    static std::stringstream ss;
+    ss.str("");
+    ss << std::setw(10) << std::setfill('0') << i;
+    std::string s = ss.str();
+    return s;
+}
+
 
 
 

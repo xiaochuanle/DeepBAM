@@ -5,6 +5,7 @@
 #ifndef BAMCLASS_REFERENCE_READER_H
 #define BAMCLASS_REFERENCE_READER_H
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <filesystem>
 #include <fstream>
@@ -26,6 +27,24 @@ namespace Yao {
             for (const auto &[key, value] : chr_to_ref) {
                 std::cout << key << " " << value.length() << std::endl;
             }
+        }
+        std::map<std::string, std::string>  reformat_chr() {
+            size_t len = 0;
+            std::map<std::string, std::string> map;
+            for(const auto & key : chr_set) {
+                len = std::max(len, key.length());
+            }
+            for (auto key : chr_set) {
+                std::string value = key;
+                if (value.length() < len) {
+                    size_t l = value.length();
+                    for (size_t i = 0; i < len - l; i++) {
+                        value = "_" + value;
+                    }
+                }
+                map[key] = value;
+            }
+            return map;
         }
 
     private:

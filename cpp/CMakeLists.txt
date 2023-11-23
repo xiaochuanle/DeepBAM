@@ -13,21 +13,21 @@ set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-11)
 set(CUDNN_INCLUDE_DIR /usr/local/cuda-11/include)
 set(CUDNN_LIBRARY /usr/local/cuda-11/lib64)
 set(CMAKE_CUDA_COMPILER /usr/local/cuda-11.8/bin/nvcc)
-# set(CMAKE_PREFIX_PATH /home/zyserver/Software/libtorch/share/cmake)
+set(CMAKE_PREFIX_PATH /home/zyserver/Software/libtorch/share/cmake)
 set(CAFFE2_USE_CUDNN TRUE)
 find_package(Torch REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(spdlog REQUIRED)
 
 link_directories(
-        ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Pod5/lib64
+        ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Pod5/lib
 )
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/Pod5/include
 )
 
 add_executable(
-        DeepBam
+        ${PROJECT_NAME}
         main.cpp
 
         utils/utils_func.cpp
@@ -62,10 +62,10 @@ target_link_libraries(
         ${PROJECT_NAME}
         ${TORCH_LIBRARIES}
         ${ZLIB_LIBRARIES}
-#        "libpod5_format.so"
-        "libpod5_format.a"
-        "libarrow.a"
-        "libjemalloc_pic.a"
-        "libzstd.a"
+        "libpod5_format.so"
+#        "libpod5_format.a"
+#        "libarrow.a"
+#        "libjemalloc_pic.a"
+#        "libzstd.a"
         spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>
 )
