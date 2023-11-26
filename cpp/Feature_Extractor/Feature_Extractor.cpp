@@ -37,10 +37,11 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                                               int32_t loc_in_motif,
                                               int32_t kmer_size) {
     auto st = std::chrono::high_resolution_clock::now();
+    auto reformat_chr = ref.reformat_chr();
     std::atomic<int64_t> thread_cnt(0);
     {
 
-        ThreadPool pool(num_workers);
+        ThreadPool pool(num_workers * 2);
         
         const size_t buffer_size = 1024 * 1024 * 50;
         char * buffer = new char [buffer_size];
@@ -55,7 +56,6 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
 
         int32_t file_cnt = 0;
         std::vector<Yao::SamRead *> inputs;
-        auto reformat_chr = ref.reformat_chr();
         while (fgets(buffer, buffer_size, pipe.get()) != nullptr) {
             sam_str = buffer;
             Yao::SamRead *sam_ptr = new Yao::SamRead(sam_str);
@@ -67,7 +67,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                     fs::path write_file = write_dir / p5_file.filename();
                     write_file.replace_extension(".npz");
                     Yao::Pod5Data p5(p5_file);
-                    while (thread_cnt >= (int64_t)(num_workers * 4)) {
+                    while (thread_cnt >= (int64_t)(num_workers * 3)) {
                         std::this_thread::sleep_for(std::chrono::seconds(1));
                     }
 
@@ -126,9 +126,6 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                 fs::path write_file = write_dir / p5_file.filename();
                 write_file.replace_extension(".npz");
                 Yao::Pod5Data p5(p5_file);
-//                while (pool.get_task_size() > 0) {
-//                    std::this_thread::sleep_for(std::chrono::seconds(3));
-//                }
                 pool.enqueue(Yao::get_hc_features,
                              p5,
                              inputs,

@@ -41,6 +41,15 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
     std::vector<float> feature_lists;
     const auto base2code_dna = Yao::get_base2code_dna();
     int cnt = 0;
+    std::stringstream  ss;
+    auto convert_num2str = [&](int32_t i) -> std::string{
+        ss.str("");
+        ss.str("");
+        ss << std::setw(10) << std::setfill('0') << i;
+        std::string s = ss.str();
+        assert(s.length() == size_t(10));
+        return s;
+    };
     for (auto & sam_ptr : inputs){
         auto coverage = Yao::compute_coverage(sam_ptr->cigar_pair, sam_ptr->query_alignment_length);
         auto identity = Yao::compute_pct_identity(sam_ptr->cigar_pair, sam_ptr->NM);
@@ -72,8 +81,6 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
             read_start = query_seq.length() - sam_ptr->query_alignment_end;
         }
         std::string strand_code = sam_ptr->is_forward ? "+" : "-";
-//        int32_t strand_code = (int32_t)sam_ptr->is_forward;
-
         std::vector<int32_t> r_to_q_poss;
         Yao::parse_cigar(sam_ptr->cigar_pair,
                          r_to_q_poss,
@@ -154,10 +161,10 @@ void Yao::get_hc_features_subthread(Yao::Pod5Data &p5,
                 std::vector<float> feature_v(feature.data_ptr<float>(),
                                              feature.data_ptr<float>() + feature.numel());
                 std::string site_info = sam_ptr->query_name + "\t" + \
-                    Yao::get_num_to_str(sam_ptr->reference_start) + "\t" +  \
-                    Yao::get_num_to_str(sam_ptr->reference_end) + "\t" + \
+                    convert_num2str(sam_ptr->reference_start) + "\t" +  \
+                    convert_num2str(sam_ptr->reference_end) + "\t" + \
                     reformat_chr.at(sam_ptr->reference_name) + \
-                    "\t" + Yao::get_num_to_str(abs_loc) + "\t" + strand_code;
+                    "\t" + convert_num2str(abs_loc) + "\t" + strand_code;
                 site_info_lists.insert(site_info_lists.end(), site_info.begin(), site_info.end());
 
                 if (pos_hc_sites.find(site_key) != pos_hc_sites.end()) {
@@ -223,15 +230,9 @@ void Yao::get_hc_features(Yao::Pod5Data p5,
                        size_t loc_in_motif, 
                        std::atomic<int64_t> &thread_cnt) {
     auto st = std::chrono::high_resolution_clock::now();
-//    auto thread_id = std::this_thread::get_id(); // convert thread id to string
-//    std::stringstream sstream;
-//    sstream << thread_id;
-//    std::string thread_str = sstream.str();
-//    spdlog::info("Thread-{} start to extract features for {}, found {} reads",
-//                 thread_str, p5.get_filename(), inputs.size());
     std::vector<uint8_t> total_site_info_lists;
     std::vector<float> total_feature_lists;
-    int32_t stride = (inputs.size() + 4) / 4;
+    int32_t stride = (inputs.size() + 2) / 2;
     std::atomic<int64_t> total_cnt(0);
     std::mutex mtx;
     std::condition_variable cv;
