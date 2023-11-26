@@ -13,7 +13,7 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char **argv) {
-    argparse::ArgumentParser program("DeepBam","0.1");
+    argparse::ArgumentParser program("BamClass","0.0.1");
 
     argparse::ArgumentParser extract_hc_sites("extract_hc_sites");
     extract_hc_sites.add_description("extract features for model training with "\

@@ -84,7 +84,7 @@ std::set<std::string> get_hc_set(const fs::path & path);
 
 std::vector<std::string> generate_keys(at::Tensor & site_info);
 
-std::string get_num_to_str(int32_t i);
+//std::string get_num_to_str(int32_t i);
 
 }
 #endif //BAMCLASS_UTILS_FUNC_H

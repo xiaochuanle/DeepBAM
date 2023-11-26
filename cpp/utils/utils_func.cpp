@@ -412,13 +412,21 @@ std::vector<std::string> Yao::generate_keys(at::Tensor &site_info) {
     return keys;
 }
 
-std::string Yao::get_num_to_str(int32_t i)  {
-    static std::stringstream ss;
-    ss.str("");
-    ss << std::setw(10) << std::setfill('0') << i;
-    std::string s = ss.str();
-    return s;
-}
+//std::string Yao::get_num_to_str(int32_t i)  {
+//    static std::stringstream ss;
+//    ss.str("");
+//    ss << std::setw(10) << std::setfill('0') << i;
+//    std::string s = ss.str();
+//    try {
+//        assert(s.length() == (size_t) 10);
+//    }
+//    catch (std::runtime_error &e) {
+//        spdlog::error("error: {}", e.what());
+//        spdlog::error("length of s: {}", s.length());
+//        spdlog::error("i: {}, s: {}", i, s);
+//    }
+//    return s;
+//}
 
 
 
