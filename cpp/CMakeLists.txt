@@ -4,10 +4,10 @@ project(DeepBam)
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
     message(STATUS "CMAKE_BUILD_TYPE = Debug")
-else()
+else ()
     set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
     message(STATUS "CMAKE_BUILD_TYPE = Release")
-endif()
+endif ()
 set(CMAKE_CXX_STANDARD 17)
 set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-11)
 set(CUDNN_INCLUDE_DIR /usr/local/cuda-11/include)
@@ -45,9 +45,6 @@ add_executable(
         Call_Modification/Call_Modification.cpp
         Call_Modification/Call_Modification.h
 
-        Data_Filter/Data_Filter.cpp
-        Data_Filter/Data_Filter.h
-
         Feature_Extractor/Feature_Extractor.cpp
         Feature_Extractor/Feature_Extractor.h
 
@@ -63,5 +60,9 @@ target_link_libraries(
         ${TORCH_LIBRARIES}
         ${ZLIB_LIBRARIES}
         "libpod5_format.so"
+        #        "libpod5_format.a"
+        #        "libarrow.a"
+        #        "libjemalloc_pic.a"
+        #        "libzstd.a"
         spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>
 )

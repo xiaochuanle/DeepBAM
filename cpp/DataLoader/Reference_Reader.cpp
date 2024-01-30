@@ -6,10 +6,10 @@
 #include <boost/algorithm/string.hpp>
 #include "Reference_Reader.h"
 #include "../utils/utils_func.h"
-Yao::Reference_Reader::Reference_Reader(fs::path reference_path_
-        , std::string seq_type_):
+
+Yao::Reference_Reader::Reference_Reader(fs::path reference_path_, std::string seq_type_) :
         reference_path(reference_path_),
-        seq_type(seq_type_){
+        seq_type(seq_type_) {
     if (!(seq_type == "DNA" || seq_type == "RNA")) {
         std::cerr << "Getting wrong ref_seq type\n";
     }

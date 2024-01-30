@@ -3,6 +3,7 @@
 // Copyright: 2022 Christian Blume
 // License: http://www.opensource.org/licenses/mit-license.php
 #pragma once
+
 #include <thread>
 #include <mutex>
 #include <future>
@@ -44,7 +45,7 @@ namespace cxxpool {
     template<typename Result, typename Iterator, typename Rep, typename Period>
     inline
     Result wait_for(Iterator first, Iterator last,
-                    const std::chrono::duration<Rep, Period>& timeout_duration,
+                    const std::chrono::duration<Rep, Period> &timeout_duration,
                     Result result) {
         for (; first != last; ++first)
             result.push_back(first->wait_for(timeout_duration));
@@ -57,7 +58,7 @@ namespace cxxpool {
     template<typename Iterator, typename Rep, typename Period>
     inline
     std::vector<std::future_status> wait_for(Iterator first, Iterator last,
-                                             const std::chrono::duration<Rep, Period>& timeout_duration) {
+                                             const std::chrono::duration<Rep, Period> &timeout_duration) {
         return wait_for(first, last, timeout_duration, std::vector<std::future_status>{});
     }
 
@@ -67,7 +68,7 @@ namespace cxxpool {
     template<typename Result, typename Iterator, typename Clock, typename Duration>
     inline
     Result wait_until(Iterator first, Iterator last,
-                      const std::chrono::time_point<Clock, Duration>& timeout_time,
+                      const std::chrono::time_point<Clock, Duration> &timeout_time,
                       Result result) {
         for (; first != last; ++first)
             result.push_back(first->wait_until(timeout_time));
@@ -80,7 +81,7 @@ namespace cxxpool {
     template<typename Iterator, typename Clock, typename Duration>
     inline
     std::vector<std::future_status> wait_until(Iterator first, Iterator last,
-                                               const std::chrono::time_point<Clock, Duration>& timeout_time) {
+                                               const std::chrono::time_point<Clock, Duration> &timeout_time) {
         return wait_until(first, last, timeout_time, std::vector<std::future_status>{});
     }
 
@@ -124,10 +125,9 @@ namespace cxxpool {
         public:
 
             infinite_counter()
-                    : count_{0}
-            {}
+                    : count_{0} {}
 
-            infinite_counter& operator++() {
+            infinite_counter &operator++() {
                 if (count_.back() == max)
                     count_.push_back(0);
                 else
@@ -135,7 +135,7 @@ namespace cxxpool {
                 return *this;
             }
 
-            bool operator>(const infinite_counter& other) const {
+            bool operator>(const infinite_counter &other) const {
                 if (count_.size() == other.count_.size()) {
                     return count_.back() > other.count_.back();
                 } else {
@@ -153,15 +153,14 @@ namespace cxxpool {
             typedef std::size_t counter_elem_t;
 
             priority_task()
-                    : callback_{}, priority_{}, order_{}
-            {}
+                    : callback_{}, priority_{}, order_{} {}
 
             // cppcheck-suppress passedByValue
-            priority_task(std::function<void()> callback, std::size_t priority, cxxpool::detail::infinite_counter<counter_elem_t> order)
-                    : callback_{std::move(callback)}, priority_(priority), order_{std::move(order)}
-            {}
+            priority_task(std::function<void()> callback, std::size_t priority,
+                          cxxpool::detail::infinite_counter<counter_elem_t> order)
+                    : callback_{std::move(callback)}, priority_(priority), order_{std::move(order)} {}
 
-            bool operator<(const priority_task& other) const {
+            bool operator<(const priority_task &other) const {
                 if (priority_ == other.priority_) {
                     return order_ > other.order_;
                 } else {
@@ -186,9 +185,8 @@ namespace cxxpool {
 // Exception thrown by the thread_pool class
     class thread_pool_error : public std::runtime_error {
     public:
-        explicit thread_pool_error(const std::string& message)
-                : std::runtime_error{message}
-        {}
+        explicit thread_pool_error(const std::string &message)
+                : std::runtime_error{message} {}
     };
 
 
@@ -210,14 +208,12 @@ namespace cxxpool {
         // Constructor. No threads are launched
         thread_pool()
                 : done_{false}, paused_{false}, threads_{}, tasks_{}, task_counter_{},
-                  task_cond_var_{}, task_mutex_{}, thread_mutex_{}
-        {}
+                  task_cond_var_{}, task_mutex_{}, thread_mutex_{} {}
 
         // Constructor. Launches the desired number of threads. Passing 0 is
         // equivalent to calling the no-argument constructor
         explicit thread_pool(std::size_t n_threads)
-                : thread_pool{}
-        {
+                : thread_pool{} {
             if (n_threads > 0) {
                 std::lock_guard<std::mutex> thread_lock(thread_mutex_);
                 const auto n_target = threads_.size() + n_threads;
@@ -247,10 +243,13 @@ namespace cxxpool {
         }
 
         // deleting copy/move semantics
-        thread_pool(const thread_pool&) = delete;
-        thread_pool& operator=(const thread_pool&) = delete;
-        thread_pool(thread_pool&&) = delete;
-        thread_pool& operator=(thread_pool&&) = delete;
+        thread_pool(const thread_pool &) = delete;
+
+        thread_pool &operator=(const thread_pool &) = delete;
+
+        thread_pool(thread_pool &&) = delete;
+
+        thread_pool &operator=(thread_pool &&) = delete;
 
         // Adds new threads to the pool and launches them
         void add_threads(std::size_t n_threads) {
@@ -289,14 +288,14 @@ namespace cxxpool {
         // Pushes a new task into the thread pool and returns the associated future.
         // The task will have a priority of 0
         template<typename Functor, typename... Args>
-        auto push(Functor&& functor, Args&&... args) -> std::future<decltype(functor(args...))> {
+        auto push(Functor &&functor, Args &&... args) -> std::future<decltype(functor(args...))> {
             return push(0, std::forward<Functor>(functor), std::forward<Args>(args)...);
         }
 
         // Pushes a new task into the thread pool while providing a priority and
         // returns the associated future. Higher priorities are processed first
         template<typename Functor, typename... Args>
-        auto push(std::size_t priority, Functor&& functor, Args&&... args) -> std::future<decltype(functor(args...))> {
+        auto push(std::size_t priority, Functor &&functor, Args &&... args) -> std::future<decltype(functor(args...))> {
             typedef decltype(functor(args...)) result_type;
             auto pack_task = std::make_shared<std::packaged_task<result_type()>>(
                     std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
@@ -305,7 +304,7 @@ namespace cxxpool {
                 std::lock_guard<std::mutex> task_lock(task_mutex_);
                 if (done_)
                     throw cxxpool::thread_pool_error{"push called while pool is shutting down"};
-                tasks_.emplace([pack_task]{ (*pack_task)(); }, priority, ++task_counter_);
+                tasks_.emplace([pack_task] { (*pack_task)(); }, priority, ++task_counter_);
             }
             task_cond_var_.notify_one();
             return future;
@@ -342,7 +341,7 @@ namespace cxxpool {
                 cxxpool::detail::priority_task task;
                 {
                     std::unique_lock<std::mutex> task_lock(task_mutex_);
-                    task_cond_var_.wait(task_lock, [this]{
+                    task_cond_var_.wait(task_lock, [this] {
                         return !paused_ && (done_ || !tasks_.empty());
                     });
                     if (done_ && tasks_.empty())
@@ -362,7 +361,7 @@ namespace cxxpool {
             }
             task_cond_var_.notify_all();
             std::lock_guard<std::mutex> thread_lock(thread_mutex_);
-            for (auto& thread : threads_)
+            for (auto &thread: threads_)
                 thread.join();
         }
 

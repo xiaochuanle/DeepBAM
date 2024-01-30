@@ -8,16 +8,16 @@
 #else
 #  ifndef POD5_FORMAT_EXPORT
 #    ifdef pod5_format_EXPORTS
-        /* We are building this library */
+/* We are building this library */
 #      define POD5_FORMAT_EXPORT 
 #    else
-        /* We are using this library */
-#      define POD5_FORMAT_EXPORT 
+/* We are using this library */
+#      define POD5_FORMAT_EXPORT
 #    endif
 #  endif
 
 #  ifndef POD5_FORMAT_NO_EXPORT
-#    define POD5_FORMAT_NO_EXPORT 
+#    define POD5_FORMAT_NO_EXPORT
 #  endif
 #endif
 

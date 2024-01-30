@@ -2,9 +2,9 @@
 
 namespace pod5 {
 
-enum class SignalType {
-    UncompressedSignal,
-    VbzSignal,
-};
+    enum class SignalType {
+        UncompressedSignal,
+        VbzSignal,
+    };
 
 }

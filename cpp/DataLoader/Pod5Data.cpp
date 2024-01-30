@@ -7,15 +7,16 @@
 #include <spdlog/spdlog.h>
 #include "Pod5Data.h"
 #include "pod5_format/c_api.h"
+
 Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) {
     // Initialize the POD5 library
     pod5_init();
 
     // open the file ready for walking;
-    Pod5FileReader_t * file = pod5_open_file(data_path.c_str());
+    Pod5FileReader_t *file = pod5_open_file(data_path.c_str());
     if (!file)
         std::cerr << "Failed to open file "
-                  << data_path << ": " <<  pod5_get_error_string() << "\n";
+                  << data_path << ": " << pod5_get_error_string() << "\n";
 
     size_t batch_count = 0;
     if (pod5_get_read_batch_count(&batch_count, file) != POD5_OK) {
@@ -27,7 +28,7 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
     for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
 //        std::cout << "batch_index: " << batch_index + 1 << "/" << batch_count << "\n";
 
-        Pod5ReadRecordBatch_t * batch = nullptr;
+        Pod5ReadRecordBatch_t *batch = nullptr;
         if (pod5_get_read_batch(&batch, file, batch_index) != POD5_OK) {
             std::cerr << "Failed to get batch: " << pod5_get_error_string() << "\n";
         }
@@ -42,8 +43,7 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
             ReadBatchRowInfo_t read_data;
             if (pod5_get_read_batch_row_info_data(
                     batch, row, READ_BATCH_ROW_INFO_VERSION, &read_data, &read_table_version)
-                != POD5_OK)
-            {
+                != POD5_OK) {
                 std::cerr << "Failed to get read " << row << "\n";
             }
 
@@ -83,7 +83,16 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
     pod5_terminate();
 }
 
-at::Tensor Yao::Pod5Data::get_normalized_signal_by_read_id(std::string id) {
+at::Tensor Yao::Pod5Data::get_normalized_signal_by_read_id(std::string & id) {
+    if (id == "d420b6fb-3375-4476-8a50-9fceecfbefd9") {
+        spdlog::info("find it");
+    }
+
+    if (id_to_read.find(id) == id_to_read.end()) {
+        spdlog::error("cant find read id in current pod5 file - {}", this->get_filename());
+        return at::Tensor();
+    }
+
     at::Tensor signal = id_to_read[id]->sample_data;
     // scale back signal to orignal
     float offset = id_to_read[id]->offset;
@@ -110,8 +119,12 @@ std::string Yao::Pod5Data::get_filename() {
     return data_path.filename();
 }
 
+bool Yao::Pod5Data::contain_read(std::string &id) {
+    return id_to_read.find(id) != id_to_read.end();
+}
+
 void Yao::Pod5Data::release() {
-    for (auto & [key, ptr] : id_to_read) {
+    for (auto &[key, ptr]: id_to_read) {
         delete ptr;
         ptr = nullptr;
     }

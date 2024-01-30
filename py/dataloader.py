@@ -5,6 +5,7 @@ import numpy as np
 class Dataset_npy(Dataset):
     """ 
     Dataset loader for binary numpy files.
+    This is a customized dataloader for mixed data training (i.e. data from both human and plants)
     """
     def __init__(self, filepath : str, kmer : int = 51, transform : object = None ) -> Dataset:
         self._data = np.load(filepath)
