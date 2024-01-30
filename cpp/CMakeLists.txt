@@ -60,9 +60,5 @@ target_link_libraries(
         ${TORCH_LIBRARIES}
         ${ZLIB_LIBRARIES}
         "libpod5_format.so"
-        #        "libpod5_format.a"
-        #        "libarrow.a"
-        #        "libjemalloc_pic.a"
-        #        "libzstd.a"
         spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>
 )
