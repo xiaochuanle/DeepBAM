@@ -12,28 +12,51 @@ DeepBam is a specialized training and inference framework for Oxford Nanopore se
 
 Create a virtual environment using Conda. The Python scripts require numpy (version 20.0 or higher) and pytorch (version 2.0 or higher) with CUDA 11.8 support.
 
-```
-bashCopy codeconda create -n DeepBam python=3.11
+```bash
+conda create -n DeepBam python=3.11
 conda activate DeepBam
 pip install numpy torch==2.0.1
 ```
 
 ### Building the C++ Program
 
-To build the program, ensure you have CUDA Toolkit 11.8 installed. Download libtorch if it's not already included in your Python environment. This C++ program is compiled using g++-11.2 on Ubuntu 22.04. Compatibility issues may arise on other systems, so feel free to raise an issue if you encounter any problems.
+DeepBam was tested and runed in **NVIDIA GeForce RTX 3090**,  ensure you have a **GPU** and **CUDA Toolkit 11.8** installed.  Download **libtorch 2.0.1** if it's not already included in your Python environment. This C++ program is compiled using g++-11.2 on Ubuntu 22.04. Compatibility issues may arise on other systems, so feel free to raise an issue if you encounter any problems.
 
-Install the following packages before building the program:
+**If you are not familiar about how to install CUDA Toolkit 11.8, here is a example for set up CUDA Toolkit 11.8 in ubuntu 22.04 x86_64 system**
+
+```bash
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+sudo mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda-repo-ubuntu2204-11-8-local_11.8.0-520.61.05-1_amd64.deb
+sudo dpkg -i cuda-repo-ubuntu2204-11-8-local_11.8.0-520.61.05-1_amd64.deb
+sudo cp /var/cuda-repo-ubuntu2204-11-8-local/cuda-*-keyring.gpg /usr/share/keyrings/
+sudo apt-get update
+sudo apt-get -y install cuda
+```
+
+**Install the following packages before building the program:**
 
 1. boost
-2. spdlog
+
+2. [spdlog](https://github.com/gabime/spdlog "spdlog"): a Fast C++ logging library
+
 3. zlib
 
-```
-bashCopy codegit clone https://github.com/huicongyao/Deep-Bam.git
+**And the these projects are already included in `3rdparty/`**
+
+4. [argparse](https://github.com/p-ranav/argparse "argparse"): Argument Parser for Modern C++
+
+5. [pod5](https://github.com/nanoporetech/pod5-file-format "pod5"): C++ abi for nanopore pod5-file-format
+
+6. [cnpy](https://github.com/rogersce/cnpy "cnpy"): library to read/write .npy and .npz files in C/C++
+
+7. [ThreadPool](https://github.com/progschj/ThreadPool "ThreadPool"): A simple C++11 Thread Pool implementation (slightly modified from the original version in github)
+```bash
+git clone https://github.com/huicongyao/Deep-Bam.git
 cd Deep-Bam/cpp
 mkdir build && cd build
 conda activate DeepBam # Activate the previously created environment
-cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` .. # Determine the cmake path
+cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` .. # Determine the cmake path # if you haven`t set up the python environment, you should directy include libtorch path here.
 make -j
 ```
 
@@ -45,8 +68,8 @@ After successfully building the program, you can use our pre-trained model or tr
 
 This process extracts features for model training.
 
-```
-bashCopy codeUsage: extract_hc_sites [--help] [--version] pod5_dir bam_path reference_path ref_type write_dir pos neg kmer_size num_workers sub_thread_per_worker motif_type loc_in_motif
+```bash
+Usage: extract_hc_sites [--help] [--version] pod5_dir bam_path reference_path ref_type write_dir pos neg kmer_size num_workers sub_thread_per_worker motif_type loc_in_motif
 
 Extract features for model training using high-confidence bisulfite data.
 
@@ -73,8 +96,8 @@ The `extract_hc_sites` mode allows training of customized models on your data. A
 
 The process for calling modifications. 
 
-```
-bashCopy codeUsage: extract_and_call_mods [--help] [--version] pod5_dir bam_path reference_path ref_type write_file module_path kmer_size num_workers sub_thread_per_worker batch_size motif_type loc_in_motif
+```bash
+Usage: extract_and_call_mods [--help] [--version] pod5_dir bam_path reference_path ref_type write_file module_path kmer_size num_workers sub_thread_per_worker batch_size motif_type loc_in_motif
 
 Asynchronously extract features and pass data to the model for modification results.
 
