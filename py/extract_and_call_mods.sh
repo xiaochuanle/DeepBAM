@@ -1,11 +1,11 @@
-/tmp/tmp.loJxjYcv1E/build/DeepBam \
+/path_to/DeepBam \
 extract_and_call_mods \
-/mnt/sde2/sugarbeet/convertPod5 \
-/mnt/sde2/sugarbeet/sugarbeet.all_pass.emit-moves.sortfn.bam \
-/mnt/sde2/sugarbeet/sugarbeet.ASM.100k.fasta \
+/path_to/pod5s/ \
+/path_to/sortbyfn.bam \
+/path_to/ref.fa \
 DNA \
-/public2/YHC/sugarbeet_LSR15_LSTM_13k_detail.txt \
-/public2/YHC/all_model_7/LSTM_20240119_LSR15_script_b13_s15_epoch21_accuracy:0.9816.pt \
+/path_to/per_read_detail.txt \
+/path_to/model.pth \
 13 \
 48 \
 1 \
