@@ -23,7 +23,7 @@ namespace Yao {
 
     class Pod5Data {
     private:
-        std::map<std::string, pod5read *> id_to_read;
+        std::map<std::string, std::shared_ptr<pod5read>> id_to_read;
         int32_t read_count;
         fs::path data_path;
     public:

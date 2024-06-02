@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char **argv) {
-    argparse::ArgumentParser program("BamClass", "0.0.1");
+    argparse::ArgumentParser program("DeepBam", "0.1.0");
 
     argparse::ArgumentParser extract_hc_sites("extract_hc_sites");
     extract_hc_sites.add_description("extract features for model training with "\
@@ -27,7 +27,8 @@ int main(int argc, char **argv) {
             .default_value("DNA")
             .help("reference genome tyoe");
     extract_hc_sites.add_argument("write_dir")
-            .help("write directory, write file format ${pod5filename}.npy");
+            .help("write directory, write file format ${pod5filename}.npz "
+                  "which contains extrated features and its site info");
     extract_hc_sites.add_argument("pos")
             .help("positive high accuracy methylation sites");
     extract_hc_sites.add_argument("neg")
@@ -39,12 +40,12 @@ int main(int argc, char **argv) {
     extract_hc_sites.add_argument("num_workers")
             .scan<'i', int>()
             .default_value(10)
-            .help("num of workers in extract feature thread pool, every worker"
-                  "possess one pod5 file and its corresponding sam reads");
+            .help("maximum Pod5 files that process parallelly");
     extract_hc_sites.add_argument("sub_thread_per_worker")
         .scan<'i', int>()
         .default_value(4)
-        .help("num of sub thread per worker");
+        .help("num of sub thread per worker, total sub thread equals "
+              "(sizeof(pod5) + 100M) / 100M * sub_thread_per_worker");
     extract_hc_sites.add_argument("motif_type")
             .default_value("CG")
             .help("motif_type default CG");
@@ -65,8 +66,6 @@ int main(int argc, char **argv) {
     extract_and_call_mods.add_argument("ref_type")
             .default_value("DNA")
             .help("reference genome type");
-//    extract_and_call_mods.add_argument("write_file1")
-//            .help("write modification count file path");
     extract_and_call_mods.add_argument("write_file")
             .help("write detailed modification result file path");
     extract_and_call_mods.add_argument("module_path")
@@ -78,15 +77,15 @@ int main(int argc, char **argv) {
     extract_and_call_mods.add_argument("num_workers")
             .scan<'i', int>()
             .default_value(10)
-            .help("num of workers in extract feature thread pool, every worker"
-                  "possess one pod5 file and its corresponding sam reads");
+            .help("maximum Pod5 files that process parallelly");
     extract_and_call_mods.add_argument("sub_thread_per_worker")
             .scan<'i', int>()
             .default_value(4)
-            .help("num of sub thread per worker");
+            .help("num of sub thread per worker, total sub thread equals "
+                  "(sizeof(pod5) + 100M) / 100M * sub_thread_per_worker");
     extract_and_call_mods.add_argument("batch_size")
             .scan<'i', int>()
-            .default_value(4096)
+            .default_value(1024)
             .help("default batch size");
     extract_and_call_mods.add_argument("motif_type")
             .default_value("CG")
@@ -94,9 +93,6 @@ int main(int argc, char **argv) {
     extract_and_call_mods.add_argument("loc_in_motif")
             .scan<'i', int>()
             .help("Location in motifset");
-
-
-
 
     program.add_subparser(extract_hc_sites);
     program.add_subparser(extract_and_call_mods);
@@ -112,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     if (program.is_subcommand_used("extract_hc_sites")) {
-        spdlog::info("Bam Class mode: extract hc sites");
+        spdlog::info("DeepBam mode: extract hc sites");
         fs::path pod5_dir = extract_hc_sites.get<std::string>("pod5_dir");
         fs::path bam_path = extract_hc_sites.get<std::string>("bam_path");
         fs::path reference_path = extract_hc_sites.get<std::string>("reference_path");
@@ -146,7 +142,7 @@ int main(int argc, char **argv) {
                 kmer_size
         );
     } else if (program.is_subcommand_used("extract_and_call_mods")) {
-        spdlog::info("Bam Class mode: extract and call mods");
+        spdlog::info("DeepBam mode: extract and call mods");
         fs::path pod5_dir = extract_and_call_mods.get<std::string>("pod5_dir");
         fs::path bam_path = extract_and_call_mods.get<std::string>("bam_path");
         fs::path reference_path = extract_and_call_mods.get<std::string>("reference_path");
@@ -177,8 +173,7 @@ int main(int argc, char **argv) {
                          num_workers,
                          sub_thread,
                          motifset,
-                         loc_in_motif
-        );
+                         loc_in_motif);
 
         spdlog::info("Extract feature and call mods finished");
         auto ed = std::chrono::high_resolution_clock::now();

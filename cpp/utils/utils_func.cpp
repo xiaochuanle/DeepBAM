@@ -1,23 +1,22 @@
 //
 // Created by dell on 2023/8/10.
 //
-#include <torch/torch.h>
-#include <algorithm>
-#include <random>
-#include <set>
-#include <spdlog/spdlog.h>
 #include "utils_func.h"
-
 /*
  * generate motifs by giving motif_type
  * current version {"CG", "CHG", "CHH"}
  * */
 std::set<std::string> Yao::get_motif_set(std::string &motif_type) {
-    if (motif_type == "CG") {
+    if (motif_type == "C") {
+        return {"C"};
+    }
+    else if (motif_type == "CG") {
         return {"CG"};
-    } else if (motif_type == "CHG") {
+    }
+    else if (motif_type == "CHG") {
         return {"CAG", "CTG", "CCG"};
-    } else if (motif_type == "CHH") {
+    }
+    else if (motif_type == "CHH") {
         // depth first search ......
         std::set<std::string> motifset;
         std::string extend = "ACT";
@@ -39,9 +38,8 @@ std::set<std::string> Yao::get_motif_set(std::string &motif_type) {
 /*
 * mapping kmer-seq to number
 * */
-std::map<char, int> Yao::get_base2code_dna() {
-
-    std::map<char, int> map;
+std::unordered_map<char, int> Yao::get_base2code_dna() {
+    std::unordered_map<char, int> map;
     map['A'] = 0;
     map['C'] = 1;
     map['G'] = 2;
@@ -64,8 +62,8 @@ std::map<char, int> Yao::get_base2code_dna() {
 /*
  * mapping kmer-seq to number
  * */
-std::map<char, int> Yao::get_base2code_rna() {
-    std::map<char, int> map;
+std::unordered_map<char, int> Yao::get_base2code_rna() {
+    std::unordered_map<char, int> map;
     map['A'] = 0;
     map['C'] = 1;
     map['G'] = 2;
@@ -88,8 +86,8 @@ std::map<char, int> Yao::get_base2code_rna() {
 /*
  * map dna bases to their complement bases
  * */
-std::map<char, char> Yao::get_basepairs_dna() {
-    std::map<char, char> map;
+std::unordered_map<char, char> Yao::get_basepairs_dna() {
+    std::unordered_map<char, char> map;
     map['A'] = 'T';
     map['C'] = 'G';
     map['G'] = 'C';
@@ -112,8 +110,8 @@ std::map<char, char> Yao::get_basepairs_dna() {
 /*
  * map rna bases to their complement bases
  * */
-std::map<char, char> Yao::get_basepairs_rna() {
-    std::map<char, char> map;
+std::unordered_map<char, char> Yao::get_basepairs_rna() {
+    std::unordered_map<char, char> map;
     map['A'] = 'U';
     map['C'] = 'G';
     map['G'] = 'C';
@@ -145,6 +143,129 @@ void Yao::get_movetable(std::vector<uint64_t> &movetable, std::string &movetable
     movetable.push_back((movetable_str.length() - 8) / 2);
 }
 
+char Yao::fourbits2base(uint8_t val)
+{
+    switch(val) {
+        case 1:
+            return 'A';
+        case 2:
+            return 'C';
+        case 4:
+            return 'G';
+        case 8:
+            return 'T';
+        case 15:
+            return 'N';
+        default:
+            std::cerr << "ERROR: Wrong base with value "<< (int)val << std::endl ;
+            return 'N';
+    }
+}
+
+
+std::string Yao::getSeq(const bam1_t *b) {
+    uint8_t *data = bam_get_seq(b);
+    int len = b->core.l_qseq;
+    std::string s(len, '\0');
+    for(int i=0; i<len; i++) {
+        char base;
+        if(i%2 == 1)
+            base = fourbits2base(data[i/2] & 0xF);
+        else
+            base = fourbits2base((data[i/2]>>4) & 0xF);
+        s[i] = base;
+    }
+    return s;
+}
+
+std::string Yao::getQual(const bam1_t *b) {
+    uint8_t *data = bam_get_qual(b);
+    int len = b->core.l_qseq;
+    std::string s(len, '\0');
+    for(int i=0; i<len; i++) {
+        s[i] = (char)(data[i] + 33); // 转换成打印的ascci
+    }
+    return s;
+}
+
+std::vector<std::pair<uint8_t, int32_t>> Yao::get_cigar_pair(const bam1_t *b) {
+    uint32_t *data = (uint32_t*)bam_get_cigar(b);
+    int cigarNum = b->core.n_cigar;
+    std::vector<std::pair<uint8_t , int32_t>> cigar_pair;
+    for (int i = 0; i < cigarNum; i++) {
+        uint32_t val = data[i];
+        uint8_t op = bam_cigar_op(val);
+        int32_t op_len = bam_cigar_oplen(val);
+        cigar_pair.push_back({op, op_len});
+    }
+    return cigar_pair;
+}
+
+std::vector<std::pair<uint8_t, int32_t>> Yao::get_cigar_pair_from_str(const std::string &cigar_str) {
+    std::vector<std::pair<uint8_t, int32_t>> cigar_pair;
+    std::size_t pos = 0;
+    for (std::size_t i = 0; i < cigar_str.length(); i ++) {
+        if (op_set.find(cigar_str[i]) != op_set.end()) {
+            std::int32_t op_len = stoi(cigar_str.substr(pos, i - pos ));
+            std::int32_t op = cigar_convert.at(cigar_str[i]);
+            cigar_pair.push_back({op, op_len});
+            pos = i + 1;
+        }
+    }
+    return cigar_pair;
+}
+
+std::vector<uint64_t> Yao::get_movetable(const bam1_t *b, int32_t & stride) {
+    const char *tag = "mv";
+    uint8_t *ptr_st, *ptr_next, *ptr_ed;
+    ptr_st = bam_aux_get(b, tag);
+    ptr_next = bam_aux_next(b, ptr_st);
+    if (ptr_next == NULL) { // last tag
+        ptr_ed = b->data + b->l_data; // set to the end of the bam read
+    }
+    else {
+        ptr_ed = ptr_next - 2;
+    }
+    stride = *(ptr_st + 6);
+    std::vector<uint64_t> movetable;
+    for (uint8_t *ptr = ptr_st + 7; ptr != ptr_ed; ptr++) {
+        if ((int32_t)*ptr == 1) {
+            movetable.push_back(ptr - ptr_st - 7);
+        }
+    }
+    movetable.push_back(ptr_ed - ptr_st - 7);
+    return movetable;
+}
+
+std::string Yao::get_aux_tag_str(const bam1_t *b, const char tag[2]) {
+    kstring_t res = KS_INITIALIZE;    // 需要初始化
+    if(bam_aux_get_str(b,tag,&res) == 1) //kstring的string buffer 没有\0终止
+    {
+        int len = ks_len(&res);
+        char *ks_s = ks_str(&res);
+        std::string s(ks_s, ks_s + len);
+        ks_free(&res); // 释放资源
+        return s;
+    }
+    else
+    {
+//        std::cerr << "no tag :" << tag << '\n';
+        ks_free(&res);
+        return "";
+    }
+}
+
+int32_t Yao::count_reference_length(std::vector<std::pair<uint8_t , int32_t>> &cigar_pair) {
+    int32_t ref_len = 0;
+    std::set<int32_t> op_set = {0, 2, 3, 7, 8};
+    for (const auto &[op, op_len]: cigar_pair) {
+        if (op_set.find(op) != op_set.end()) {
+            ref_len += op_len;
+        }
+    }
+    return ref_len;
+}
+
 void Yao::get_refloc_of_methysite_in_motif(std::vector<int32_t> &refloc_of_methysite,
                                            std::string &seqstr,
                                            std::set<std::string> &motifset,
@@ -157,21 +278,39 @@ void Yao::get_refloc_of_methysite_in_motif(std::vector<int32_t> &refloc_of_methy
     }
 }
 
-void Yao::group_signal_by_movetable(std::vector<at::Tensor> &signal_group,
+std::vector<int32_t> Yao::group_signal_by_movetable(at::Tensor &signal_group,
                                     at::Tensor &trimed_signal,
                                     std::vector<uint64_t> &movetable,
-                                    size_t stride) {
-    // TODO: signal_duration not exactly equal to call_events * stride
-    // TODO: maybe this move * stride way is not right!
+                                    size_t stride,
+                                    int64_t signal_len) {
     assert(movetable[0] == 0);
     assert(trimed_signal.size(0) >= (int64_t) movetable.back());
     using namespace torch::indexing;
-    signal_group.resize(movetable.size() - 1);
+//    signal_group.resize(movetable.size() - 1);
+    signal_group = torch::zeros({(int64_t)movetable.size() - 1, signal_len}, at::kFloat);
+    std::vector<int32_t> vec_len(movetable.size() - 1);
     for (size_t move_idx = 0; move_idx < movetable.size() - 1; move_idx++) {
-        int64_t start = movetable[move_idx];
-        int64_t end = movetable[move_idx + 1];
-        signal_group[move_idx] = trimed_signal.index({Slice(start * stride, end * stride)});
+        int64_t start = movetable[move_idx] * stride;
+        int64_t end = movetable[move_idx + 1] * stride;
+        vec_len[move_idx] = end - start;
+        int offset = std::abs(signal_len - vec_len[move_idx]) / 2;
+        if (vec_len[move_idx] < signal_len) {
+            start = start - offset;
+            end = start + signal_len;
+            if (start < 0) {
+                start = 0; end = signal_len;
+            }
+            if (end > trimed_signal.size(0)) {
+                end = trimed_signal.size(0); start = end - signal_len;
+            }
+        }
+        else if (vec_len[move_idx] > signal_len) {
+            start = start + offset;
+            end = start + signal_len;
+        }
+        signal_group[move_idx] = trimed_signal.index({Slice(start, end )});
     }
+    return vec_len;
 }
 
 std::string Yao::get_complement_seq(std::string &ref_seq, std::string seq_type) {
@@ -214,7 +353,7 @@ void Yao::get_cigar_pair(std::vector<std::pair<int32_t, int32_t>> &cigar_pair,
     }
 }
 
-void Yao::parse_cigar(std::vector<std::pair<int32_t, int32_t>> &cigar_pair,
+void Yao::parse_cigar(std::vector<std::pair<uint8_t, int32_t>> &cigar_pair,
                       std::vector<int32_t> &r_to_q_poss,
                       bool is_forward, int32_t ref_len) {
     r_to_q_poss.clear();
@@ -246,18 +385,18 @@ void Yao::parse_cigar(std::vector<std::pair<int32_t, int32_t>> &cigar_pair,
     }
 }
 
-int32_t Yao::count_reference_length(std::vector<std::pair<int32_t, int32_t>> &cigar_pair) {
-    int32_t ref_len = 0;
-    std::set<int32_t> op_set = {0, 2, 3, 7, 8};
-    for (const auto &[op, op_len]: cigar_pair) {
-        if (op_set.find(op) != op_set.end()) {
-            ref_len += op_len;
-        }
-    }
-    return ref_len;
-}
+//int32_t Yao::count_reference_length(std::vector<std::pair<int32_t, int32_t>> &cigar_pair) {
+//    int32_t ref_len = 0;
+//    std::set<int32_t> op_set = {0, 2, 3, 7, 8};
+//    for (const auto &[op, op_len]: cigar_pair) {
+//        if (op_set.find(op) != op_set.end()) {
+//            ref_len += op_len;
+//        }
+//    }
+//    return ref_len;
+//}
 
-float Yao::compute_pct_identity(std::vector<std::pair<int32_t, int32_t>> &cigar_pair, int32_t nm) {
+float Yao::compute_pct_identity(std::vector<std::pair<uint8_t, int32_t>> &cigar_pair, int32_t nm) {
     if (nm == -1) return 0;
     float nmatches = -(float) nm, nalign = 0;
     for (const auto &[op, op_len]: cigar_pair) {
@@ -271,7 +410,7 @@ float Yao::compute_pct_identity(std::vector<std::pair<int32_t, int32_t>> &cigar_
     return nmatches / nalign;
 }
 
-float Yao::compute_coverage(std::vector<std::pair<int32_t, int32_t>> &cigar_pair, int32_t query_alignment_length) {
+float Yao::compute_coverage(std::vector<std::pair<uint8_t, int32_t>> &cigar_pair, int32_t query_alignment_length) {
     float nmatch = 0;
     for (const auto &[op, op_len]: cigar_pair) {
         if (op == 0) {
@@ -313,38 +452,49 @@ at::Tensor Yao::get_query_qualities(std::string &query_qualities, bool is_forwar
 
 at::Tensor Yao::get_signals_rect(std::vector<at::Tensor> &k_signals,
                                  int32_t signals_len) {
-    at::Tensor signals_rect = torch::empty({(int64_t) k_signals.size(), signals_len}, torch::kFloat32);
-    std::vector<float> vec(signals_len, 0);
+    at::Tensor signals_rect = torch::zeros({(int64_t) k_signals.size(), signals_len}, torch::kFloat32);
+//    std::vector<float> vec(signals_len, 0);
+    using namespace torch::indexing;
     for (size_t i = 0; i < k_signals.size(); i++) {
-        vec.resize(signals_len, 0);
+//        vec.resize(signals_len, 0);
+//        if (k_signals[i].size(0) < signals_len) {
+//            int32_t pad0_len = signals_len - k_signals[i].size(0);
+//            int32_t pad0_left = pad0_len / 2;
+//            for (int64_t j = 0; j < k_signals[i].size(0); j++) {
+//                vec[j + pad0_left] = k_signals[i][j].item<float>();
+//            }
+//        } else if (k_signals[i].size(0) > signals_len) {
+//            std::vector<int32_t> idxs(k_signals[i].size(0));
+//            for (int k = 0; k < k_signals[i].size(0); k++) {
+//                idxs[k] = k;
+//            }
+//            std::random_device rd;
+//            std::mt19937 gen(rd());
+//            std::shuffle(idxs.begin(), idxs.end(), gen);
+//            std::vector<int32_t> new_idx(idxs.begin(), idxs.begin() + signals_len);
+//            std::sort(new_idx.begin(), new_idx.end());
+//            for (int32_t j = 0; j < signals_len; j++) {
+//                vec[j] = k_signals[i][new_idx[j]].item<float>();
+//            }
+//        } else {
+//            for (int64_t j = 0; j < k_signals[i].size(0); j++) {
+//                vec[j] = k_signals[i][j].item<float>();
+//            }
+//        }
+//        signals_rect[i] = torch::from_blob(vec.data(), vec.size(), torch::kFloat32).clone();
+//        vec.clear();
         if (k_signals[i].size(0) < signals_len) {
             int32_t pad0_len = signals_len - k_signals[i].size(0);
             int32_t pad0_left = pad0_len / 2;
-            for (int64_t j = 0; j < k_signals[i].size(0); j++) {
-                vec[j + pad0_left] = k_signals[i][j].item<float>();
-            }
-        } else if (k_signals[i].size(0) > signals_len) {
-            std::vector<int32_t> idxs(k_signals[i].size(0));
-            for (int k = 0; k < k_signals[i].size(0); k++) {
-                idxs[k] = k;
-            }
-
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::shuffle(idxs.begin(), idxs.end(), gen);
-
-            std::vector<int32_t> new_idx(idxs.begin(), idxs.begin() + signals_len);
-            std::sort(new_idx.begin(), new_idx.end());
-            for (int32_t j = 0; j < signals_len; j++) {
-                vec[j] = k_signals[i][new_idx[j]].item<float>();
-            }
-        } else {
-            for (int64_t j = 0; j < k_signals[i].size(0); j++) {
-                vec[j] = k_signals[i][j].item<float>();
-            }
+            signals_rect[i].index({Slice(pad0_left, pad0_left + k_signals[i].size(0))}) = k_signals[i];
         }
-        signals_rect[i] = torch::from_blob(vec.data(), vec.size(), torch::kFloat32).clone();
-        vec.clear();
+        else if (k_signals[i].size(0) > signals_len) {
+            int32_t diff = (k_signals[i].size(0) - signals_len) / 2;
+            signals_rect[i] = k_signals[i].index({Slice(diff, diff + signals_len)});
+        }
+        else {
+            signals_rect[i] = k_signals[i];
+        }
     }
     return signals_rect;
 }
@@ -377,6 +527,7 @@ std::map<std::string, fs::path> Yao::get_filename_to_path(const fs::path &path) 
 
 std::set<std::string> Yao::get_hc_set(const fs::path &path) {
     std::set<std::string> hc_sites;
+
     std::ifstream in(path);
     std::string line;
     std::vector<std::string> line_s;

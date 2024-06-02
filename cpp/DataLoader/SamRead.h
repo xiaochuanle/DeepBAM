@@ -12,36 +12,27 @@
 #include <map>
 #include <set>
 #include <unordered_set>
+#include "../3rdparty/htslib/include/sam.h"
 
 namespace Yao {
 
 
     struct SamRead {
 
-        SamRead() = default;
+        SamRead() = delete;
 
-        SamRead(std::string samstr);
-//    std::vector<std::pair<std::int32_t ,std::int32_t>> get_ciagr_pair();
-
+        SamRead(samFile* bam_in, bam_hdr_t* bam_header, bam1_t *aln);
+        SamRead(std::string sam_str);
         void print() {
-//        auto pairs = get_ciagr_pair();
             for (const auto &[a, b]: cigar_pair) {
                 std::cout << "(" << a << ", " << b << ") ";
             }
             std::cout << std::endl;
         }
 
-        std::vector<int32_t> get_ref_to_seq();
-
-        std::string get_query_alinment_read();
-
-        std::string get_reference_seq();
-
         bool is_forward;
         bool is_mapped;
-        float map_coverage;
-        float map_identity;
-
+        bool is_split;
 
         // Basuc alignment section
         std::string query_name;
@@ -55,7 +46,7 @@ namespace Yao {
         int32_t query_alignment_end;
         int32_t query_alignment_length;
         std::string cigar_string;
-        std::vector<std::pair<int32_t, int32_t>> cigar_pair;
+        std::vector<std::pair<uint8_t , int32_t>> cigar_pair;
         std::string rnext;
         int32_t pnext;
         int64_t tlen;
@@ -65,11 +56,14 @@ namespace Yao {
 
         // tags
         std::vector<uint64_t> movetable;
-        int32_t trimed_start;
         int32_t stride;
         std::string MD_str;
         int32_t NM;
         std::string file_name;
+        std::string parent_read;
+        int32_t split;
+        int num_samples;
+        int32_t trimed_start;
     };
 
 }

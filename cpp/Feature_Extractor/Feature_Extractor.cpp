@@ -39,39 +39,58 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                                               int32_t kmer_size) {
     auto st = std::chrono::high_resolution_clock::now();
     auto reformat_chr = ref.reformat_chr();
-    spdlog::info("num_workers: {}, num_sub_thread: {}", num_workers, num_sub_thread);
+//    spdlog::info("num_workers: {}, num_sub_thread: {}", num_workers, num_sub_thread);
+
+    samFile *bam_in = sam_open(bam_file.c_str(), "r");
+    if (hts_set_threads(bam_in, 2)) {
+        fprintf(stderr, "Error setting threads.\n");
+        sam_close(bam_in);
+    }
+    bam_hdr_t *bam_header = sam_hdr_read(bam_in);
+    bam1_t  *aln = NULL;
+    aln = bam_init1();
+
+    bool get_new_p5 = true;
+    std::packaged_task<Yao::Pod5Data(const std::map<std::string, fs::path>&, std::string )> task;
+
+
     std::atomic<int64_t> thread_cnt(0);
     {
 
-        ThreadPool pool(num_workers * 2);
-
-        const size_t buffer_size = 1024 * 1024 * 50;
-        char *buffer = new char[buffer_size];
-
-        std::string sam_str;
-        std::string cmd = "samtools view -@ 12 " + bam_file.string();
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-
-        if (!pipe) {
-            throw std::runtime_error("popen() failed!");
-        }
-
+        ThreadPool pool(num_workers );
         int32_t file_cnt = 0;
-//        std::vector<Yao::SamRead *> inputs;
+
         std::vector<std::shared_ptr<Yao::SamRead>> inputs;
-        while (fgets(buffer, buffer_size, pipe.get()) != nullptr) {
-            sam_str = buffer;
-//            Yao::SamRead *sam_ptr = new Yao::SamRead(sam_str);
-            auto sam_ptr = std::make_shared<Yao::SamRead>(sam_str);
+
+        while (sam_read1(bam_in, bam_header, aln) >= 0) {
+//            if (get_new_p5 && file_name_hold != "") {
+//                std::function<Yao::Pod5Data(const std::map<std::string, fs::path>&, std::string )>
+//                        getP5 = [&](const std::map<std::string, fs::path>& filename_to_path, std::string file_name_hold)
+//                {
+//                    fs::path p5_file = filename_to_path.at(file_name_hold);
+//                    return Yao::Pod5Data(p5_file);
+//                };
+//                task = std::packaged_task<Yao::Pod5Data(const std::map<std::string, fs::path>&, std::string )>(getP5);
+//
+//                std::thread thread(std::ref(task), std::ref(filename_to_path), file_name_hold);
+//                thread.join();
+//                get_new_p5 = false;
+//            }
+
+            std::shared_ptr<Yao::SamRead> sam_ptr = std::make_shared<Yao::SamRead>(bam_in, bam_header, aln);
+
             if (file_name_hold != sam_ptr->file_name && !file_name_hold.empty()) {
                 fs::path p5_file;
+                get_new_p5 = true;
                 try {
                     p5_file = filename_to_path.at(file_name_hold);
                     fs::path write_file = write_dir / p5_file.filename();
                     write_file.replace_extension(".npz");
+//                    auto p5 = task.get_future().get();
                     Yao::Pod5Data p5(p5_file);
+                    uint64_t sub_th_mut = (fs::file_size(p5_file) + 100 * 1024 * 1024 - 1) / (100 * 1024 * 1024);
                     while (thread_cnt >= (int64_t)(num_workers * num_sub_thread)) {
-                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        std::this_thread::sleep_for(std::chrono::milliseconds (50));
                     }
                     pool.enqueue(Yao::get_hc_features,
                                  p5,
@@ -87,7 +106,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                                  std::ref(motifset),
                                  loc_in_motif,
                                  std::ref(thread_cnt),
-                                 num_sub_thread);
+                                 num_sub_thread * sub_th_mut);
                     inputs.clear();
                     file_cnt++;
                     spdlog::info("File {} enter to"\
@@ -97,29 +116,18 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                 catch (...) {
                     spdlog::error("Couldn't find file: {}", file_name_hold);
                     file_name_hold = sam_ptr->file_name;
-                    // release allocated memory
-//                    for (auto &ptr: inputs) {
-//                        delete ptr;
-//                    }
                     inputs.clear();
                 }
             }
 
             file_name_hold = sam_ptr->file_name;
-            if (!sam_ptr->is_mapped) {
-//                delete sam_ptr;
-//                sam_ptr = nullptr;
-                continue;
-            }
+            if (!sam_ptr->is_mapped) continue;
             int32_t st = sam_ptr->reference_start;
             int32_t ed = sam_ptr->reference_end;
             std::string chr_key = sam_ptr->reference_name;
             sam_ptr->reference_seq = ref.get_reference_seq(chr_key, sam_ptr->is_forward, st, ed);
-            if (sam_ptr->reference_seq.length() == 0) {
-////                delete sam_ptr;
-//                sam_ptr = nullptr;
-                continue;
-            }
+            if (sam_ptr->reference_seq.length() == 0) continue;
+            if (sam_ptr->query_sequence.empty()) continue;
             inputs.push_back(sam_ptr);
         }
         if (inputs.size() > 0) {
@@ -128,6 +136,7 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
                 p5_file = filename_to_path.at(file_name_hold);
                 fs::path write_file = write_dir / p5_file.filename();
                 write_file.replace_extension(".npz");
+//                auto p5 = task.get_future().get();
                 Yao::Pod5Data p5(p5_file);
                 pool.enqueue(Yao::get_hc_features,
                              p5,
@@ -152,14 +161,9 @@ void Yao::Feature_Extractor::extract_hc_sites(size_t num_workers,
             }
             catch (...) {
                 spdlog::error("Couldn't find file: {}", file_name_hold);
-                // release allocated memory
-//                for (auto &ptr: inputs) {
-////                    delete ptr;
-//                }
                 inputs.clear();
             }
         }
-        delete [] buffer;
     }
     auto ed = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(ed - st);

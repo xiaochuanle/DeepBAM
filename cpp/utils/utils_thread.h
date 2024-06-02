@@ -10,13 +10,25 @@
 #include <mutex>
 #include <unordered_map>
 #include <map>
-
+#include <torch/torch.h>
+#include <chrono>
+#include <thread>
+#include <future>
+#include <unordered_map>
 #include <set>
 #include <condition_variable>
+#include <cstring>
+#include <set>
+#include <spdlog/spdlog.h>
+
+#include "../DataLoader/Reference_Reader.h"
 #include "../DataLoader/Pod5Data.h"
 #include "../DataLoader/SamRead.h"
-#include "../utils/utils_func.h"
 #include "../DataLoader/Reference_Reader.h"
+#include "../3rdparty/threadpool/threadpool.h"
+#include "../3rdparty/cnpy/cnpy.h"
+#include "../3rdparty/htslib/include/sam.h"
+#include "../utils/utils_func.h"
 
 
 namespace Yao {

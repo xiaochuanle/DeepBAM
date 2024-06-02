@@ -11,7 +11,6 @@
 Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) {
     // Initialize the POD5 library
     pod5_init();
-
     // open the file ready for walking;
     Pod5FileReader_t *file = pod5_open_file(data_path.c_str());
     if (!file)
@@ -26,7 +25,6 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
 
     size_t read_count_ = 0;
     for (std::size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
-//        std::cout << "batch_index: " << batch_index + 1 << "/" << batch_count << "\n";
 
         Pod5ReadRecordBatch_t *batch = nullptr;
         if (pod5_get_read_batch(&batch, file, batch_index) != POD5_OK) {
@@ -55,7 +53,8 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
             std::vector<std::int16_t> samples;
             samples.resize(sample_count);
             pod5_get_read_complete_signal(file, batch, row, samples.size(), samples.data());
-            pod5read *read = new pod5read;
+//            pod5read *read = new pod5read;
+            std::shared_ptr<pod5read> read = std::make_shared<pod5read>();
             std::vector<float> signal(samples.begin(), samples.end());
             read->sample_data = torch::from_blob(signal.data(), signal.size(), torch::kFloat32).clone();
             read->offset = read_data.calibration_offset;
@@ -84,9 +83,9 @@ Yao::Pod5Data::Pod5Data(fs::path data_path_) : data_path(std::move(data_path_)) 
 }
 
 at::Tensor Yao::Pod5Data::get_normalized_signal_by_read_id(std::string & id) {
-    if (id == "d420b6fb-3375-4476-8a50-9fceecfbefd9") {
-        spdlog::info("find it");
-    }
+//    if (id == "d420b6fb-3375-4476-8a50-9fceecfbefd9") {
+//        spdlog::info("find it");
+//    }
 
     if (id_to_read.find(id) == id_to_read.end()) {
         spdlog::error("cant find read id in current pod5 file - {}", this->get_filename());
@@ -124,11 +123,11 @@ bool Yao::Pod5Data::contain_read(std::string &id) {
 }
 
 void Yao::Pod5Data::release() {
-    for (auto &[key, ptr]: id_to_read) {
-        delete ptr;
-        ptr = nullptr;
-    }
-    id_to_read.clear();
+//    for (auto &[key, ptr]: id_to_read) {
+//        delete ptr;
+//        ptr = nullptr;
+//    }
+//    id_to_read.clear();
 }
 
 Yao::Pod5Data::~Pod5Data() {
