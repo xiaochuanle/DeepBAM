@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(DeepBam)
+project(DeepBAM)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")

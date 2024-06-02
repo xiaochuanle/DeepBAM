@@ -12,7 +12,7 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char **argv) {
-    argparse::ArgumentParser program("DeepBam", "0.1.0");
+    argparse::ArgumentParser program("DeepBAM", "0.1.0");
 
     argparse::ArgumentParser extract_hc_sites("extract_hc_sites");
     extract_hc_sites.add_description("extract features for model training with "\
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     if (program.is_subcommand_used("extract_hc_sites")) {
-        spdlog::info("DeepBam mode: extract hc sites");
+        spdlog::info("DeepBAM mode: extract hc sites");
         fs::path pod5_dir = extract_hc_sites.get<std::string>("pod5_dir");
         fs::path bam_path = extract_hc_sites.get<std::string>("bam_path");
         fs::path reference_path = extract_hc_sites.get<std::string>("reference_path");
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
                 kmer_size
         );
     } else if (program.is_subcommand_used("extract_and_call_mods")) {
-        spdlog::info("DeepBam mode: extract and call mods");
+        spdlog::info("DeepBAM mode: extract and call mods");
         fs::path pod5_dir = extract_and_call_mods.get<std::string>("pod5_dir");
         fs::path bam_path = extract_and_call_mods.get<std::string>("bam_path");
         fs::path reference_path = extract_and_call_mods.get<std::string>("reference_path");
