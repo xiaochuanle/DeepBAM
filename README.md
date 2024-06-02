@@ -55,8 +55,8 @@ sudo apt-get -y install cuda
 
 7. [ThreadPool](https://github.com/progschj/ThreadPool "ThreadPool"): A simple C++11 Thread Pool implementation (slightly modified from the original version in github)
 ```bash
-git clone https://github.com/huicongyao/Deep-Bam.git
-cd Deep-Bam/cpp
+git clone https://github.com/huicongyao/DeepBAM.git
+cd DeepBAM/cpp
 mkdir build && cd build
 conda activate DeepBAM # Activate the previously created environment
 cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` .. # Determine the cmake path # if you haven`t set up the python environment, you should directy include libtorch path here.
@@ -65,7 +65,7 @@ make -j
 
 ## DeepBAM Usage
 
-After successfully building the program, you can use our pre-trained model or train your own. The executable is located at `Deep-Bam/cpp/build/DeepBAM`.
+After successfully building the program, you can use our pre-trained model or train your own. The executable is located at `DeepBAM/cpp/build/DeepBAM`.
 
 ### DeepBAM: Extracting High-Confidence Sites
 
