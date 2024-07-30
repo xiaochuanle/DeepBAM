@@ -30,23 +30,7 @@ def read_file_to_dict(file_path, t):
                 count_dict[key] = {'count': 1, 'methy': me}
 
     return result_dict, count_dict
-'''
-def filter_data(file_path, filter_ratio):
-    df = pd.read_csv(file_path, sep='\t')
-            #, names=['read_id', 'start', 'end', 'chrom', 'pos', 'strand', 'prob'])
-    df['uncertainty_interval'] = abs(df.iloc[:, 6] - 0.82)  # 计算uncertainty_interval
 
-    # 根据uncertainty_interval列进行降序排序
-    df = df.sort_values(by='uncertainty_interval', ascending=False)
-
-    # 计算需要保留的行数
-    retain_count = int(len(df) * (1 - filter_ratio))
-
-    # 保留前 retain_count 行
-    df_filtered = df.iloc[:retain_count, :]
-
-    return df_filtered
-'''
 def filter_data(file_path, t):
     df = pd.read_csv(file_path, sep='\t')
     df_filtered = df[(df.iloc[:, 6] < 1-t) | (df.iloc[:, 6] >= t)]
